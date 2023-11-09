@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Layout Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <script>
+        // Fetch the JSON data from the file
+        d3.json('https://raw.githubusercontent.com/Kruthikareddymurthy/ma3/main/output.json').then(function(graph) {
+            // Define a color scale based on the 'country' attribute
+            const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+            // Create the force simulation
+            const simulation = d3.forceSimulation(graph.nodes)
+                .force('charge', d3.forceManyBody().strength(-5)) // Decrease the charge strength
+                .force('collision', d3.forceCollide().radius(d => Math.sqrt(d.cluster) * 2)); // Decrease the node size
+
+            // Create the SVG container
+            const svg = d3.select('body').append('svg')
+                .attr('width', 1000)
+                .attr('height', 800);
+
+            // Create links
+            const link = svg.selectAll('.link')
+                .data(graph.links)
+                .enter().append('line')
+                .attr('class', 'link')
+                .attr('stroke', 'black'); // Set the color of the edges to black
+
+            // Create nodes
+            const node = svg.selectAll('.node')
+                .data(graph.nodes)
+                .enter().append('circle')
+                .attr('class', 'node')
+                .attr('r', d => Math.sqrt(d.cluster) * 2) // Set the node size
+                .attr('fill', d => color(d.country))  // Use color scale based on 'country'
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            // Add tooltips for nodes
+            node.append('title')
+                .text(d => `Author: ${d.id}\nCountry: ${d.country}\nCluster: ${d.cluster}`);
+
+            // Update the simulation with the nodes and links
+            simulation
+                .on('tick', () => {
+                    link
+                        .attr('x1', d => d.source.x)
+                        .attr('y1', d => d.source.y)
+                        .attr('x2', d => d.target.x)
+                        .attr('y2', d => d.target.y);
+
+                    node
+                        .attr('cx', d => d.x)
+                        .attr('cy', d => d.y);
+                });
+
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+        });
+    </script>
+</body>
+</html>
