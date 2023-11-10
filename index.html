@@ -5,46 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Force Layout Visualization</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .side-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+    </style>
 </head>
 <body>
+    <div>
+        <form id="control-form">
+            <label>Link Strength:
+                <input type="range" id="link-strength" min="0" max="1" step="1" value="1">
+                <span id="link-strength-value">0.7</span>
+            </label>
+            <br>
+            <label>Collide Force:
+                <input type="range" id="collide-force" min="0" max="100" step="1" value="30">
+                <span id="collide-force-value">30</span>
+            </label>
+            <br>
+            <label>Charge Force:
+                <input type="range" id="charge-force" min="-100" max="0" step="1" value="-30">
+                <span id="charge-force-value">-30</span>
+            </label>
+            <br>
+            <label>Node Size:
+                <input type="radio" name="node-size" value="publications" checked> Publications
+                <input type="radio" name="node-size" value="citations"> Citations
+            </label>
+        </form>
+        </div>
+        <div class="side-panel" id="side-panel">
+            <h3>Author Details</h3>
+            <p id="author-details">Click on a node to view details.</p>
+        </div>
     <script>
         // Fetch the JSON data from the file
-        d3.json('https://raw.githubusercontent.com/Kruthikareddymurthy/ma3/main/output.json').then(function(graph) {
+        d3.json('https://raw.githubusercontent.com/Kruthikareddymurthy/ma3/main/output%20(2).json').then(function(graph) {
             // Define a color scale based on the 'country' attribute
             const color = d3.scaleOrdinal(d3.schemeCategory10);
-
+            
             // Create the force simulation
             const simulation = d3.forceSimulation(graph.nodes)
-                .force('charge', d3.forceManyBody().strength(-5)) // Decrease the charge strength
-                .force('collision', d3.forceCollide().radius(d => Math.sqrt(d.cluster) * 2)); // Decrease the node size
+                .force('charge', d3.forceManyBody().strength(-1)) 
+                .force('collision', d3.forceCollide().radius(d => Math.sqrt(d.Citations) * 2))
+                .force('radial', d3.forceRadial(50, 400, 300));
 
             // Create the SVG container
             const svg = d3.select('body').append('svg')
                 .attr('width', 1000)
                 .attr('height', 800);
-
+                const tooltip = d3.select('body').append('div')
+        .attr('class', 'tooltip')
+        .style('opacity', 0);
+            
             // Create links
             const link = svg.selectAll('.link')
                 .data(graph.links)
                 .enter().append('line')
                 .attr('class', 'link')
-                .attr('stroke', 'black'); // Set the color of the edges to black
+                .attr('stroke', 'grey'); // Set the color of the edges to black
 
             // Create nodes
             const node = svg.selectAll('.node')
                 .data(graph.nodes)
                 .enter().append('circle')
                 .attr('class', 'node')
-                .attr('r', d => Math.sqrt(d.cluster) * 2) // Set the node size
+                .attr('r', d => Math.sqrt(d.Citations)) // Set the node size
                 .attr('fill', d => color(d.country))  // Use color scale based on 'country'
                 .call(d3.drag()
                     .on('start', dragstarted)
                     .on('drag', dragged)
-                    .on('end', dragended));
-
+                    .on('end', dragended))
+                    .on('mouseover', mouseover)
+                .on('mouseout', mouseout);
+            
             // Add tooltips for nodes
             node.append('title')
-                .text(d => `Author: ${d.id}\nCountry: ${d.country}\nCluster: ${d.cluster}`);
+                .text(d => `Author: ${d.id}\nCountry: ${d.country}\nCluster: ${d.cluster}\nCitations: ${d.Citations}`);
 
             // Update the simulation with the nodes and links
             simulation
@@ -59,9 +104,10 @@
                         .attr('cx', d => d.x)
                         .attr('cy', d => d.y);
                 });
+                simulation.force('link', d3.forceLink(graph.links).id(d => d.id));
 
             function dragstarted(event, d) {
-                if (!event.active) simulation.alphaTarget(0.3).restart();
+                if (!event.active) simulation.alphaTarget(0.2).restart();
                 d.fx = d.x;
                 d.fy = d.y;
             }
@@ -75,6 +121,86 @@
                 if (!event.active) simulation.alphaTarget(0);
                 d.fx = null;
                 d.fy = null;
+            }
+            function zoomed(event) {
+                svg.attr('transform', event.transform);
+            }
+
+            function mouseover(event, d) {
+                d3.select(this).attr('r', d => Math.sqrt(d.Citations) * 2 * 1.5);
+
+    // Display tooltip
+    tooltip.transition()
+        .duration(200)
+        .style('opacity', .9);
+    tooltip.html(`Author: ${d.id}<br>Country: ${d.country}<br>Cluster: ${d.cluster}<br>Citations: ${d.Citations}`)
+        .style('left', (event.pageX) + 'px')
+        .style('top', (event.pageY - 28) + 'px');
+            }
+
+            function mouseout(event, d) {
+                d3.select(this).attr('r', d => Math.sqrt(d.Citations) * 2);
+
+    // Hide tooltip
+    tooltip.transition()
+        .duration(500)
+        .style('opacity', 0);
+            }
+            // Add event listeners to form controls
+            const linkStrengthInput = document.getElementById('link-strength');
+            const linkStrengthValue = document.getElementById('link-strength-value');
+            linkStrengthInput.addEventListener('input', updateLinkStrength);
+
+            const collideForceInput = document.getElementById('collide-force');
+            const collideForceValue = document.getElementById('collide-force-value');
+            collideForceInput.addEventListener('input', updateCollideForce);
+
+            const chargeForceInput = document.getElementById('charge-force');
+            const chargeForceValue = document.getElementById('charge-force-value');
+            chargeForceInput.addEventListener('input', updateChargeForce);
+
+            const nodeSizeInputs = document.getElementsByName('node-size');
+            nodeSizeInputs.forEach(input => input.addEventListener('change', updateNodeSize));
+
+            // Event listener for node click to display author details
+            node.on('click', showAuthorDetails);
+            function updateLinkStrength() {
+                const value = linkStrengthInput.value;
+                linkStrengthValue.textContent = value;
+                simulation.force('link').strength(value);
+                simulation.alpha(1).restart();
+            }
+
+            function updateCollideForce() {
+                const value = collideForceInput.value;
+                collideForceValue.textContent = value;
+                simulation.force('collision').radius(d => Math.sqrt(d.Citations) * 2 + parseInt(value));
+                simulation.alpha(1).restart();
+            }
+
+            function updateChargeForce() {
+                const value = chargeForceInput.value;
+                chargeForceValue.textContent = value;
+                simulation.force('charge').strength(parseInt(value));
+                simulation.alpha(1).restart();
+            }
+            function updateNodeSize() {
+                const selectedSizeInput = Array.from(nodeSizeInputs).find(input => input.checked);
+                const selectedSize = selectedSizeInput ? selectedSizeInput.value : 'publications';
+                // Update node size based on the selected option
+                node.attr('r', d => {
+                    if (selectedSize === 'publications') return Math.sqrt(d.Publications) * 2;
+                    
+                    return Math.sqrt(d.Citations) * 2;
+                });
+            }
+
+            function showAuthorDetails(event, d) {
+                // Display author details in the side panel
+                const sidePanel = document.getElementById('side-panel');
+                const authorDetails = document.getElementById('author-details');
+                authorDetails.textContent = `Author: ${d.id}\nCountry: ${d.country}\nCluster: ${d.cluster}\nCitations: ${d.Citations}`;
+                sidePanel.style.display = 'block';
             }
         });
     </script>
