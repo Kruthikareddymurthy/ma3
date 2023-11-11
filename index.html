@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Force Layout Visualization</title>
+    <title>Data Visualization</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         .side-panel {
@@ -19,6 +19,7 @@
     </style>
 </head>
 <body>
+    <h1>MAJOR ASSIGNMENT 3</h1>
     <div>
         <form id="control-form">
             <label>Link Strength:
@@ -37,8 +38,9 @@
             </label>
             <br>
             <label>Node Size:
-                <input type="radio" name="node-size" value="publications" checked> Publications
-                <input type="radio" name="node-size" value="citations"> Citations
+                <input type="radio" name="node-size" value="citations" checked> Citations
+                <input type="radio" name="node-size" value="publications"> Publications
+                
             </label>
         </form>
         </div>
@@ -47,18 +49,18 @@
             <p id="author-details">Click on a node to view details.</p>
         </div>
     <script>
-        // Fetch the JSON data from the file
-        d3.json('https://raw.githubusercontent.com/Kruthikareddymurthy/ma3/main/output%20(2).json').then(function(graph) {
-            // Define a color scale based on the 'country' attribute
+       
+        d3.json('https://raw.githubusercontent.com/Kruthikareddymurthy/ma3/main/output%20(11).json').then(function(graph) {
+            // Defining a color scale 
             const color = d3.scaleOrdinal(d3.schemeCategory10);
             
-            // Create the force simulation
+            // Creating force simulation for nodes
             const simulation = d3.forceSimulation(graph.nodes)
                 .force('charge', d3.forceManyBody().strength(-1)) 
-                .force('collision', d3.forceCollide().radius(d => Math.sqrt(d.Citations) * 2))
+                .force('collision', d3.forceCollide().radius(d => Math.sqrt(d.citations) * 2))
                 .force('radial', d3.forceRadial(50, 400, 300));
 
-            // Create the SVG container
+            // Creating SVG container
             const svg = d3.select('body').append('svg')
                 .attr('width', 1000)
                 .attr('height', 800);
@@ -66,20 +68,20 @@
         .attr('class', 'tooltip')
         .style('opacity', 0);
             
-            // Create links
+            // creating the links
             const link = svg.selectAll('.link')
                 .data(graph.links)
                 .enter().append('line')
                 .attr('class', 'link')
-                .attr('stroke', 'grey'); // Set the color of the edges to black
+                .attr('stroke', 'grey'); 
 
-            // Create nodes
+            // creating the nodes
             const node = svg.selectAll('.node')
                 .data(graph.nodes)
                 .enter().append('circle')
                 .attr('class', 'node')
-                .attr('r', d => Math.sqrt(d.Citations)) // Set the node size
-                .attr('fill', d => color(d.country))  // Use color scale based on 'country'
+                .attr('r', d => Math.sqrt(d.citations)) // the node size is set based on the citations
+                .attr('fill', d => color(d.country))  // the color of the node is set based on the country
                 .call(d3.drag()
                     .on('start', dragstarted)
                     .on('drag', dragged)
@@ -87,11 +89,11 @@
                     .on('mouseover', mouseover)
                 .on('mouseout', mouseout);
             
-            // Add tooltips for nodes
+            // tooltip for nodes
             node.append('title')
-                .text(d => `Author: ${d.id}\nCountry: ${d.country}\nCluster: ${d.cluster}\nCitations: ${d.Citations}`);
+                .text(d => `Author: ${d.id}\nCountry: ${d.country}\nCluster: ${d.cluster}\nCitations: ${d.citations}\nNumber of publications: ${d.number_of_publications}`);
 
-            // Update the simulation with the nodes and links
+            // simulation
             simulation
                 .on('tick', () => {
                     link
@@ -127,26 +129,26 @@
             }
 
             function mouseover(event, d) {
-                d3.select(this).attr('r', d => Math.sqrt(d.Citations) * 2 * 1.5);
+                d3.select(this).attr('r', d => Math.sqrt(d.citations) * 2 * 1.5);
 
-    // Display tooltip
+    // tool tip transition
     tooltip.transition()
         .duration(200)
         .style('opacity', .9);
-    tooltip.html(`Author: ${d.id}<br>Country: ${d.country}<br>Cluster: ${d.cluster}<br>Citations: ${d.Citations}`)
+    tooltip.html(`Author: ${d.id}<br>Country: ${d.country}<br>Cluster: ${d.cluster}<br>Citations: ${d.citations}<br>Number of publications: ${d.number_of_publications}`)
         .style('left', (event.pageX) + 'px')
         .style('top', (event.pageY - 28) + 'px');
             }
 
             function mouseout(event, d) {
-                d3.select(this).attr('r', d => Math.sqrt(d.Citations) * 2);
+                d3.select(this).attr('r', d => Math.sqrt(d.citations) * 2);
 
-    // Hide tooltip
+    // Hide the tooltip
     tooltip.transition()
         .duration(500)
         .style('opacity', 0);
             }
-            // Add event listeners to form controls
+            
             const linkStrengthInput = document.getElementById('link-strength');
             const linkStrengthValue = document.getElementById('link-strength-value');
             linkStrengthInput.addEventListener('input', updateLinkStrength);
@@ -162,7 +164,7 @@
             const nodeSizeInputs = document.getElementsByName('node-size');
             nodeSizeInputs.forEach(input => input.addEventListener('change', updateNodeSize));
 
-            // Event listener for node click to display author details
+            
             node.on('click', showAuthorDetails);
             function updateLinkStrength() {
                 const value = linkStrengthInput.value;
@@ -186,20 +188,20 @@
             }
             function updateNodeSize() {
                 const selectedSizeInput = Array.from(nodeSizeInputs).find(input => input.checked);
-                const selectedSize = selectedSizeInput ? selectedSizeInput.value : 'publications';
-                // Update node size based on the selected option
+                const selectedSize = selectedSizeInput ? selectedSizeInput.value : 'citations';
+                // Update the node size based on the selected option i.e publication or citations
                 node.attr('r', d => {
-                    if (selectedSize === 'publications') return Math.sqrt(d.Publications) * 2;
-                    
+                    if (selectedSize === 'publications') return Math.sqrt(d.number_of_publications) * 2;
+
                     return Math.sqrt(d.Citations) * 2;
                 });
             }
 
             function showAuthorDetails(event, d) {
-                // Display author details in the side panel
+                // Display author details in the side panel when clicked on the node
                 const sidePanel = document.getElementById('side-panel');
                 const authorDetails = document.getElementById('author-details');
-                authorDetails.textContent = `Author: ${d.id}\nCountry: ${d.country}\nCluster: ${d.cluster}\nCitations: ${d.Citations}`;
+                authorDetails.textContent = `Author: ${d.id}\nCountry: ${d.country}\nCluster: ${d.cluster}\nCitations: ${d.citations}\nNumber of publications: ${d.number_of_publications}`;
                 sidePanel.style.display = 'block';
             }
         });
